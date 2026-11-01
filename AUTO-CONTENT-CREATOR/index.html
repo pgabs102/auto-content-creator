@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="tl" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Auto Content Creator Bot - Android & Web Edition</title>
+  <meta name="theme-color" content="#090d16">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#3b82f6', 600: '#2563eb' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Top Bar Contract: 3 zones -->
+  <header class="border-b border-slate-800 bg-slate-900/80 px-6 py-4 flex items-center justify-between gap-8 sticky top-0 z-30 backdrop-blur">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">⚡</div>
+      <span class="font-bold text-lg tracking-tight whitespace-nowrap text-white">Auto Content Creator Bot</span>
+    </div>
+    
+    <div class="hidden md:flex items-center gap-6 text-sm text-slate-400">
+      <span class="hover:text-white transition-colors cursor-pointer">Feed & Queue</span>
+      <span class="hover:text-white transition-colors cursor-pointer">Philippine Scheduler</span>
+      <span class="hover:text-white transition-colors cursor-pointer">Supabase Sync</span>
+      <span class="hover:text-white transition-colors cursor-pointer">Android APK Package</span>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <div class="text-right hidden sm:block">
+        <div class="text-[11px] text-slate-400">Philippine Standard Time</div>
+        <div id="phtClock" class="text-xs font-mono font-medium text-emerald-400 tabular-nums">Loading...</div>
+      </div>
+      <button onclick="openCreateModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-md transition-all whitespace-nowrap">
+        + Gumawa ng Post
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+    <!-- Status Dashboard Ribbon -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="text-xs text-slate-400 font-medium">Scheduled Posts</div>
+        <div id="countScheduled" class="text-2xl font-bold font-mono text-white mt-1 tabular-nums">2</div>
+        <div class="text-[11px] text-slate-500 mt-1">Naka-antabay sa queue</div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="text-xs text-slate-400 font-medium">Pending Approval</div>
+        <div id="countPending" class="text-2xl font-bold font-mono text-amber-400 mt-1 tabular-nums">1</div>
+        <div class="text-[11px] text-slate-500 mt-1">Manual review kailangan</div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="text-xs text-slate-400 font-medium">Published Today</div>
+        <div id="countPublished" class="text-2xl font-bold font-mono text-emerald-400 mt-1 tabular-nums">1</div>
+        <div class="text-[11px] text-slate-500 mt-1">Matagumpay na nai-post</div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="text-xs text-slate-400 font-medium">AutoPost Engine</div>
+        <div class="flex items-center gap-2 mt-1">
+          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span class="text-sm font-semibold text-emerald-400">ACTIVE</span>
+        </div>
+        <div class="text-[11px] text-slate-500 mt-1">Asia/Manila (UTC+8) loop</div>
+      </div>
+    </div>
+
+    <!-- Controls & Filters -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+        <button onclick="setFilter('ALL')" id="btnFilterALL" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white whitespace-nowrap">Lahat</button>
+        <button onclick="setFilter('PENDING_APPROVAL')" id="btnFilterPENDING" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:text-white whitespace-nowrap">For Approval</button>
+        <button onclick="setFilter('SCHEDULED')" id="btnFilterSCHEDULED" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:text-white whitespace-nowrap">Scheduled</button>
+        <button onclick="setFilter('PUBLISHED')" id="btnFilterPUBLISHED" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:text-white whitespace-nowrap">Published</button>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button onclick="triggerSchedulerCheck()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition">
+          🔄 Run Scheduler Check Now
+        </button>
+      </div>
+    </div>
+
+    <!-- Posts Grid / List -->
+    <div id="postsContainer" class="space-y-4">
+      <!-- Dynamic Javascript Content -->
+    </div>
+  </main>
+
+  <!-- Modal for Creating Post -->
+  <div id="createModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">Gumawa ng Bagong Social Post</h3>
+        <button onclick="closeCreateModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Platform</label>
+          <select id="modalPlatform" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white">
+            <option value="facebook">Facebook</option>
+            <option value="instagram">Instagram</option>
+            <option value="tiktok">TikTok</option>
+            <option value="twitter">X (Twitter)</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="youtube">YouTube Shorts</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Content Category</label>
+          <select id="modalCategory" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white">
+            <option value="educational">Educational Content</option>
+            <option value="inspirational">Inspirational Content</option>
+            <option value="entertainment">Entertainment</option>
+            <option value="promotional">Promotional Content</option>
+            <option value="informative">Informative Post</option>
+            <option value="tips_tutorials">Tips and Tutorials</option>
+            <option value="image_based">Image-Based Content</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Paksa / Instruksyon</label>
+          <textarea id="modalPrompt" rows="3" placeholder="Halimbawa: 5 paraan para makatipid sa negosyo ngayong 2026..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Publishing Mode</label>
+            <select id="modalMode" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white">
+              <option value="manual_approval">Manual Approval</option>
+              <option value="autopost">AutoPost</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Oras (Asia/Manila)</label>
+            <select id="modalTime" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white">
+              <option value="08:30">08:30 AM (Commute)</option>
+              <option value="12:15">12:15 PM (Lunch)</option>
+              <option value="18:45" selected>06:45 PM (Prime)</option>
+              <option value="21:30">09:30 PM (Bedtime)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeCreateModal()" class="px-4 py-2 text-xs text-slate-400 hover:text-white">Kanselahin</button>
+        <button onclick="submitNewPost()" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow">I-generate & I-save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Local state
+    let posts = [
+      {
+        content_id: 'c1',
+        post_title: '5 Tips Paano Pabilisin ang Trabaho Gamit ang AI sa 2026',
+        caption: 'Gusto mo bang maging mas productive kahit siksik ang schedule mo? 🚀\\n\\n1️⃣ Content Ideation: Huwag magsimula sa blank page.\\n2️⃣ Automated Captions: Instant Taglish copy.\\n3️⃣ Batch Hashtag Research: High intent tags.\\n4️⃣ Philippine Prime Time Scheduling (6:45 PM PHT).\\n\\nComment below kung alin ang paborito mo!',
+        hashtags: ['#PhilippineTech', '#AIWorkflow', '#FreelancePH'],
+        platform: 'facebook',
+        content_category: 'educational',
+        scheduled_date: new Date().toISOString().split('T')[0],
+        scheduled_time: '18:45',
+        approval_status: 'SCHEDULED'
+      },
+      {
+        content_id: 'c2',
+        post_title: 'Disiplina sa Negosyo: Tuloy-tuloy ang Hakbang',
+        caption: 'Hindi kailangang perpekto ang simula, ang mahalaga ay hindi ka humihinto. Bawat maliit na hakbang ay patungo sa tagumpay. 💪🇵🇭',
+        hashtags: ['#NegosyoTips', '#PinoyEntrepreneur', '#Disiplina'],
+        platform: 'instagram',
+        content_category: 'inspirational',
+        scheduled_date: new Date().toISOString().split('T')[0],
+        scheduled_time: '21:30',
+        approval_status: 'PENDING_APPROVAL'
+      },
+      {
+        content_id: 'c3',
+        post_title: 'Automated Creator Studio: Daily Pipeline Strategy',
+        caption: 'How top agencies manage 50+ social channels without burnout. Systemize batch production and schedule via queue.',
+        hashtags: ['#MarketingAutomation', '#SocialMediaPH'],
+        platform: 'linkedin',
+        content_category: 'informative',
+        scheduled_date: new Date().toISOString().split('T')[0],
+        scheduled_time: '08:30',
+        approval_status: 'PUBLISHED'
+      }
+    ];
+
+    let currentFilter = 'ALL';
+
+    function updateClock() {
+      const now = new Date();
+      const pht = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+      const clockEl = document.getElementById('phtClock');
+      if (clockEl) clockEl.innerText = pht + ' (UTC+8)';
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function renderPosts() {
+      const container = document.getElementById('postsContainer');
+      const filtered = currentFilter === 'ALL' ? posts : posts.filter(p => p.approval_status === currentFilter);
+      
+      // Update counters
+      document.getElementById('countScheduled').innerText = posts.filter(p => p.approval_status === 'SCHEDULED').length;
+      document.getElementById('countPending').innerText = posts.filter(p => p.approval_status === 'PENDING_APPROVAL').length;
+      document.getElementById('countPublished').innerText = posts.filter(p => p.approval_status === 'PUBLISHED').length;
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-center py-12 text-slate-500 text-sm">Walang posts sa kategoryang ito.</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(p => `
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2 text-xs">
+              <span class="uppercase tracking-wider font-semibold text-blue-400">${p.platform}</span>
+              <span class="text-slate-600">·</span>
+              <span class="text-slate-400">${p.content_category}</span>
+              <span class="text-slate-600">·</span>
+              <span class="font-mono text-slate-400">${p.scheduled_date} ${p.scheduled_time} PHT</span>
+            </div>
+            <div>
+              <span class="px-2.5 py-1 text-[11px] font-semibold rounded-md ${
+                p.approval_status === 'PUBLISHED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
+                p.approval_status === 'PENDING_APPROVAL' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
+                'bg-blue-950 text-blue-400 border border-blue-800'
+              }">${p.approval_status}</span>
+            </div>
+          </div>
+
+          <h4 class="font-bold text-white text-sm sm:text-base">${p.post_title}</h4>
+          <p class="text-xs sm:text-sm text-slate-300 whitespace-pre-line">${p.caption}</p>
+          <div class="text-xs text-blue-400 font-mono">${(p.hashtags || []).join(' ')}</div>
+
+          <div class="pt-2 border-t border-slate-800/80 flex items-center justify-end gap-2">
+            ${p.approval_status === 'PENDING_APPROVAL' ? `
+              <button onclick="approvePost('${p.content_id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow">
+                I-Approve (Ilagay sa Queue)
+              </button>
+              <button onclick="rejectPost('${p.content_id}')" class="px-3 py-1.5 bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 text-xs font-semibold rounded-lg">
+                I-Reject
+              </button>
+            ` : ''}
+            ${p.approval_status === 'SCHEDULED' ? `
+              <button onclick="forcePublishPost('${p.content_id}')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow">
+                I-Publish Ngayon
+              </button>
+            ` : ''}
+            <button onclick="deletePost('${p.content_id}')" class="px-3 py-1.5 text-slate-500 hover:text-slate-300 text-xs">
+              Burahin
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      ['ALL', 'PENDING', 'SCHEDULED', 'PUBLISHED'].forEach(f => {
+        const btn = document.getElementById('btnFilter' + f);
+        if (btn) {
+          if (f === filter || (filter === 'PENDING_APPROVAL' && f === 'PENDING')) {
+            btn.className = "px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white whitespace-nowrap";
+          } else {
+            btn.className = "px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:text-white whitespace-nowrap";
+          }
+        }
+      });
+      renderPosts();
+    }
+
+    function approvePost(id) {
+      const item = posts.find(p => p.content_id === id);
+      if (item) {
+        item.approval_status = 'SCHEDULED';
+        renderPosts();
+      }
+    }
+
+    function rejectPost(id) {
+      const item = posts.find(p => p.content_id === id);
+      if (item) {
+        item.approval_status = 'REJECTED';
+        renderPosts();
+      }
+    }
+
+    function forcePublishPost(id) {
+      const item = posts.find(p => p.content_id === id);
+      if (item) {
+        item.approval_status = 'PUBLISHED';
+        renderPosts();
+      }
+    }
+
+    function deletePost(id) {
+      posts = posts.filter(p => p.content_id !== id);
+      renderPosts();
+    }
+
+    function openCreateModal() { document.getElementById('createModal').classList.remove('hidden'); }
+    function closeCreateModal() { document.getElementById('createModal').classList.add('hidden'); }
+
+    function submitNewPost() {
+      const platform = document.getElementById('modalPlatform').value;
+      const category = document.getElementById('modalCategory').value;
+      const prompt = document.getElementById('modalPrompt').value || 'Magandang social media update';
+      const mode = document.getElementById('modalMode').value;
+      const time = document.getElementById('modalTime').value;
+
+      const newPost = {
+        content_id: 'post_' + Date.now(),
+        post_title: prompt.slice(0, 50),
+        caption: '🚀 ' + prompt + '\\n\\nIto ay automated content generation para sa Philippine digital audience.\\n\\nStay consistent and keep growing!',
+        hashtags: ['#' + platform.toUpperCase(), '#DigitalCreatorPH', '#AutomatedWorkflow'],
+        platform: platform,
+        content_category: category,
+        scheduled_date: new Date().toISOString().split('T')[0],
+        scheduled_time: time,
+        approval_status: mode === 'autopost' ? 'SCHEDULED' : 'PENDING_APPROVAL'
+      };
+
+      posts.unshift(newPost);
+      closeCreateModal();
+      renderPosts();
+    }
+
+    function triggerSchedulerCheck() {
+      alert('Awtomatikong sinuri ang Asia/Manila queue! Lahat ng posts na due ay naiproseso.');
+      renderPosts();
+    }
+
+    renderPosts();
+  </script>
+</body>
+</html>
