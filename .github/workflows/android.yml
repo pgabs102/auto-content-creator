@@ -23,11 +23,11 @@ jobs:
           java-version: '17'
 
       - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
+        run: yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
       - name: Install Android SDK packages
         run: |
-          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
       - name: Build APK
         working-directory: AUTO-CONTENT-CREATOR/android
